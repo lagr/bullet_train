@@ -12,7 +12,7 @@ Pathname.glob("test/system/**/*.rb") do |path|
     # Act on all the lines within the `@@test_devices.each` block
     lines.slice(lines.index(devices_line).succ...end_line_index).each do |line|
       # Replace `test` with `device_test` and delete device name suffix pattern
-      line.sub! /test(.*) on(?: a)? #\{device_name\}/, "device_test\\1"
+      line.sub!(/test(.*) on(?: a)? #\{device_name\}/, "device_test\\1")
       # Dedent line by two spaces
       line.delete_prefix! "  "
     end
@@ -25,7 +25,7 @@ Pathname.glob("test/system/**/*.rb") do |path|
     lines.grep(/resize_for\(display_details\)\n/m).each do
       index = lines.index _1
       lines.delete_at index # Remove `resize_for` line
-      lines.delete_at index if lines[index].match? /\s*\n/ # Remove \n line, now at the same index.
+      lines.delete_at index if lines[index].match?(/\s*\n/) # Remove \n line, now at the same index.
     end
 
     path.write lines.join
