@@ -89,41 +89,70 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     key = ENV["TEST_DEVICE"].to_sym
     if @@test_devices.key?(key)
       puts "Running tests with the `#{ENV["TEST_DEVICE"]}` device profile specifically.".green
-      @@test_devices = {key => @@test_devices[key]}
+      @@test_devices = @@test_devices.slice(key)
     else
       puts "⚠️ `#{ENV["TEST_DEVICE"]}` isn't a valid device profile in `test/test_helper.rb`, so we'll just run *all* device profiles.".yellow
     end
   end
 
-  def resize_for(display_details)
+  def device_name
+    @device_name ||= @@test_devices.each_key.find { name.include?(_1.to_s) } || raise("unknown test device, you probably want to use `device_test` to generate this test")
+  end
+
+  def display_details
+    @@test_devices[device_name]
+  end
+
+  # Generate a device specific test for each device in `@@test_devices`.
+  #
+  # Automatically resizes the display for the test too.
+  #
+  #   device_test "system test" do
+  #     p device_name
+  #     p display_details
+  #   end
+  def self.device_test(name, &block)
+    @@test_devices.each_key do |device_name|
+      test "#{name} on a #{device_name}" do
+        resize_display # TODO: Figure out why the browser window opens if this is done in `setup`.
+        instance_eval(&block)
+      end
+    end
+  end
+
+  def resize_display(display_details = self.display_details)
     if use_cuprite?
       page.driver.resize(*calculate_resolution(display_details))
     else
       page.driver.browser.manage.window.resize_to(*calculate_resolution(display_details))
     end
   end
+  alias_method :resize_for, :resize_display
 
-  def within_team_menu_for(display_details)
+  def within_team_menu(display_details = self.display_details)
     first("#team").hover
     yield
   end
+  alias_method :within_team_menu_for, :within_team_menu
 
-  def within_user_menu_for(display_details)
+  def within_user_menu(display_details = self.display_details)
     find("#user").hover
     yield
   end
+  alias_method :within_user_menu_for, :within_user_menu
 
-  def within_developers_menu_for(display_details)
+  def within_developers_menu(display_details = self.display_details)
     find("#developers").hover
     yield
   end
+  alias_method :within_developers_menu_for, :within_developers_menu
 
   def open_mobile_menu
     find("#mobile-menu-open").click
   end
 
   # sign out.
-  def sign_out_for(display_details)
+  def sign_out(display_details = self.display_details)
     if display_details[:mobile]
       open_mobile_menu
     else
@@ -135,8 +164,9 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     # (this will vary depending on where you send people when they sign out.)
     assert page.has_content? "Sign In"
   end
+  alias_method :sign_out_for, :sign_out
 
-  def sign_in_from_homepage_for(display_details)
+  def sign_in_from_homepage(display_details = self.display_details)
     # TODO the tailwind port of bullet train doesn't currently support a homepage.
     visit new_user_session_path
 
@@ -144,8 +174,9 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     # otherwise our tests will immediately start trying to match things before the page even loads.
     assert page.has_content?("Sign In")
   end
+  alias_method :sign_in_from_homepage_for, :sign_in_from_homepage
 
-  def sign_up_from_homepage_for(display_details)
+  def sign_up_from_homepage(display_details = self.display_details)
     # TODO the tailwind port of bullet train doesn't currently support a homepage.
     visit new_user_registration_path
 
@@ -153,20 +184,23 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     # otherwise our tests will immediately start trying to match things before the page even loads.
     assert page.has_content?("Create Your Account")
   end
+  alias_method :sign_up_from_homepage_for, :sign_up_from_homepage
 
-  def within_homepage_navigation_for(display_details)
+  def within_homepage_navigation(display_details = self.display_details)
     if display_details[:mobile]
       open_mobile_menu
     end
     yield
   end
+  alias_method :within_homepage_navigation_for, :within_homepage_navigation
 
-  def within_primary_menu_for(display_details)
+  def within_primary_menu(display_details = self.display_details)
     open_mobile_menu if display_details[:mobile]
     within ".menu" do
       yield
     end
   end
+  alias_method :within_primary_menu_for, :within_primary_menu
 
   def be_invited_to_sign_up
     # if the application is configured to only allow invitation-only sign-ups, visit the invitation url.
